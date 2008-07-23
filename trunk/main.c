@@ -171,8 +171,6 @@ void showADC(void)
 void balance(void)
 {
 	unsigned long TimerMsWork;
-//	int left_motor_bias = lmb_PARAM;
-//	int right_motor_bias = rmb_PARAM;
 	
 	InitADC();
 	init_pwm();
@@ -194,7 +192,7 @@ void balance(void)
 
 	TimerMsWork = TimerMsCur();
 	
-	DDRB |= 0x01;	// Make B0 an output
+	DDRB |= (1 << PB0);	// Make B0 an output
 
     while (!(getkey() == 1))
 	{
@@ -204,7 +202,7 @@ void balance(void)
 		TimerMsWork = TimerMsCur();
 		
 		// toggle pin B0 for oscilloscope timings.
-		(PINB & 0x01) ? ClearBit(PORTB, PB0): SetBit(PORTB, PB0);
+		PORTB = PINB ^ (1 << PB0);
 		
 		gyroRaw = GetADC(gyroRawSensor);
 		accelRaw = GetADC(accelRawSensor);
