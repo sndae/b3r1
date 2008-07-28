@@ -44,34 +44,29 @@
 //							| 7	| x	| 5	| 6 | 4	|  
 //                          +---+---+---+---+---+
 
-#define rightLineSensor		4		//PF4 - Bottom Right pin
-#define leftLineSensor		5		//PF5 - 2 to the left of PF4	
-#define RightDistSensor		6		//PF6 - 1 to the left of PF4 	
-#define LeftDistSensor		7		//PF7 - Bottom Left pin 
-
-#define gyroRawSensor		4
-#define accelRawSensor		5
+#define gyro_sensor		4
+#define accel_sensor	5
 
 // Balance
-float balance_torque;
-float overspeed;
-float overspeed_integral;
-float gyro_integrated;
+double balance_torque;
+double overspeed;
+double overspeed_integral;
+double gyro_integrated;
 
 //	Proportional Konstant
-float Kp = Kp_PARAM;				// balance loop P gain
+double Kp = Kp_PARAM;				// balance loop P gain
 //	Differentiate konstant
-float Kd = Kd_PARAM;				// balance loop D gain
+double Kd = Kd_PARAM;				// balance loop D gain
 
-//float Ksteer;						// steering control gain
-//float Ksteer2;					// steering control tilt sensitivity
-//float Kspeed; 					// speed tracking gain
-float neutral = neutral_PARAM;		// "angle of natural balance"
+//double Ksteer;						// steering control gain
+//double Ksteer2;					// steering control tilt sensitivity
+//double Kspeed; 					// speed tracking gain
+double neutral = neutral_PARAM;		// "angle of natural balance"
 
 
-//float KpTurn;						// turn rate loop P gain
-//float KiTurn;						// turn rate loop I gain
-//float KdTurn;						// turn rate loop D gain
+//double KpTurn;					// turn rate loop P gain
+//double KiTurn;					// turn rate loop I gain
+//double KdTurn;					// turn rate loop D gain
 
 // Outputs
 int left_motor_torque;
@@ -80,14 +75,8 @@ int right_motor_torque;
 volatile unsigned int accelRaw;
 volatile unsigned int gyroRaw;
 
-//volatile unsigned int potRaw;
-
-//volatile float accel;
-//volatile float gyro;
-//volatile float pot;
-
-float current_angle = 0;
-float current_rate = 0;
+double current_angle = 0;
+double current_rate = 0;
 
 extern volatile char KEY_VALID;
 
@@ -151,16 +140,14 @@ int main (void)
  *****************************************************************************/  
 void showADC(void) 
 {
-    int adcL, adcR = 0;
-   
-    InitADC();
+     InitADC();
    
     while (!(getkey() == 1))
 	{	
-        adcL = GetADC(leftLineSensor);
-        adcR = GetADC(rightLineSensor);
-        TimerWait(10);
-        show12bits(adcL, adcR);
+		gyroRaw = GetADC(gyro_sensor);
+		accelRaw = GetADC(accel_sensor);
+        TimerWait(100);
+        show12bits(gyroRaw, accelRaw);
     }
 	LCD_ShowColons(0);
 }
@@ -171,7 +158,15 @@ void showADC(void)
 void balance(void)
 {
 	unsigned long TimerMsWork;
-	
+
+	long int g_bias = 0;
+//	const int x_offset = 3805;	//offset value 2.35 * 8192 / 5.0V = 3850
+	const int x_offset = 4254;	//offset value 2.56V * 8192 / 4.93V = 4254
+	double q_m = 0.0;
+	double int_angle = 0.0;
+	double x = 0.0;
+	double tilt = 0.0;
+
 	InitADC();
 	init_pwm();
 
@@ -193,6 +188,18 @@ void balance(void)
 	TimerMsWork = TimerMsCur();
 	
 	DDRB |= (1 << PB0);	// Make B0 an output
+	
+
+	/* as a 1st step, a reference measurement of the angular rate sensor is 
+	 * done. This value is used as offset compensation */
+	
+	for (int i=1 ; i<=200; i++) // determine initial value for bias of gyro
+	{
+		g_bias = g_bias + GetADC(gyro_sensor);
+	}
+	
+	g_bias = g_bias / 200;
+
 
     while (!(getkey() == 1))
 	{
@@ -204,57 +211,44 @@ void balance(void)
 		// toggle pin B0 for oscilloscope timings.
 		PORTB = PINB ^ (1 << PB0);
 		
-		gyroRaw = GetADC(gyroRawSensor);
-		accelRaw = GetADC(accelRawSensor);
 		
-		rprintf("gyroRaw: %d  accelRaw: %d\r\n",gyroRaw, accelRaw);
-//		show12bits(gyroRaw, accelRaw);
+		q_m = (GetADC(gyro_sensor) - g_bias) / 24.578;		// (0.015 * 8192)/5V = 24.578
+		state_update(q_m);
+		
+		x = (GetADC(accel_sensor) - x_offset) / 1570.2;	// 8192 * (3.37V - 1.48V)/4.93V/2G
+		tilt = 57.29577951 * (x);
+		kalman_update(tilt);
+		
+		int_angle += angle * dt_PARAM;
 
-		// no scaling needed.. but I'm doing it anyway
-//		gyro = scale_gyro(gyroRaw);
-//		accel = scale_accel(accelRaw);
-
-		// Have measurement, find error and update K
-		kalman_update(accelRaw);
-
-		// Produce new current angle and rate estimate
-		// real units assumed (they're pretty close)
-		state_update((float)(int)( gyroRaw - GYRO_OFFSET));
-
-		// If tilt is positive, move wheels forward to balance;
-		// + cmds are cw (right side, fwd)
-		//				 (left side, bkwd)
-		// So left side gets - cmds
-
-		// This is just a casualty of the sensor mounting
-		current_angle = angle;
-		current_rate = rate;
-		rprintf("angle: ");
-		rprintfFloat(8, angle);
-		rprintf("  rate: ");
-		rprintfFloat(8, rate);
-		rprintfCRLF();
+//		rprintf("  x:");
+//		rprintfFloat(8, x);
+//		rprintf("  angle:");
+//		rprintfFloat(8, angle);
+//		rprintf("  rate:");
+//		rprintfFloat(8, rate);
+//		rprintfCRLF();
 
 		// Balance.  The most important line in the entire program.
-		balance_torque = Kp * (current_angle - neutral) + Kd * current_rate;
-		rprintf("bal_torq: ");
-		rprintfFloat(8, balance_torque);
-		rprintfCRLF();
+	//	balance_torque = Kp * (current_angle - neutral) + Kd * current_rate;
+	//	rprintf("bal_torq: ");
+	//	rprintfFloat(8, balance_torque);
+	//	rprintfCRLF();
 
 		//steer_knob = 0;
 
 		// change from current angle to something proportional to speed
 		// should this be the abs val of the cur speed or just curr speed?
-		//float steer_cmd = (1.0 / (1.0 + Ksteer2 * fabs(current_angle))) * (Ksteer * steer_knob);
-		float steer_cmd = 0.0;
+		//double steer_cmd = (1.0 / (1.0 + Ksteer2 * fabs(current_angle))) * (Ksteer * steer_knob);
+		double steer_cmd = 0.0;
 
 		// Get current rate of turn
-		//float current_turn = left_speed - right_speed; //<-- is this correct
-		//float turn_accel = current_turn - prev_turn;
+		//double current_turn = left_speed - right_speed; //<-- is this correct
+		//double turn_accel = current_turn - prev_turn;
 		//prev_turn = current_turn;
 
 		// Closed-loop turn rate PID
-		//float steer_cmd = KpTurn * (current_turn - steer_desired)
+		//double steer_cmd = KpTurn * (current_turn - steer_desired)
 		//					+ KdTurn * turn_accel;
 		//					//+ KiTurn * turn_integrated;
 
@@ -276,10 +270,10 @@ void balance(void)
 //		if (right_motor_torque > MAX_TORQUE)  right_motor_torque =  MAX_TORQUE;
 
 		// Set PWM values for both motors
-		if (fabs(current_angle) < 45) 
+		if (fabs(angle) < 60) 
 		{	//	if bot has not fallen over then go 
-			SetLeftMotorPWM(left_motor_torque);
-			SetRightMotorPWM(right_motor_torque);
+			SetLeftMotorPWM(angle * 10);
+			SetRightMotorPWM(angle * 10);
 		} 
 		else 
 		{	// Otherwise stop motors
@@ -301,7 +295,7 @@ void rprintf_test(void)
 	u16 val;
 	u08 mydata;
 	u08 mystring[10];
-	float b;
+	double b;
 	u08 small;
 	u16 medium;
 	u32 big;
@@ -431,10 +425,16 @@ void PWM_Test(void)
     while (!(getkey() == 1)) 
 	{
 	
-		for (int i = 0; i <= 255; i++) {
+		for (int i = 0; i <= 255 - lmb_PARAM; i++) {
 	        show12bits(i, i);
 			SetLeftMotorPWM(i);
 			SetRightMotorPWM(i);
+			TimerWait(100);
+		}
+		for (int i = 0; i <= 255 - lmb_PARAM; i++) {
+	        show12bits(i, i);
+			SetLeftMotorPWM(-i);
+			SetRightMotorPWM(-i);
 			TimerWait(100);
 		}
 			

@@ -21,6 +21,7 @@ void SetRightMotorPWM(int pwm);
 
 void InitADC(void);
 int GetADC(char adc);
+int GetADC8(char adc);
 
 float scale_accel(int rawAccel);
 float scale_gyro(int rawGyro);

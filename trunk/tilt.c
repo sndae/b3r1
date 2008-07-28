@@ -49,13 +49,13 @@
  * change this value if you update at a different rate.
  * eg .02 = 50 Hz rate
  */
-static const float	dt	= dt_PARAM;
+static const double	dt	= dt_PARAM;
 
 /*
  * Our covariance matrix.  This is updated at every time step to
  * determine how well the sensors are tracking the actual state.
  */
-static float		P[2][2] = {
+static double		P[2][2] = {
 								{ 1, 0 },
 								{ 0, 1 },
 };
@@ -65,9 +65,9 @@ static float		P[2][2] = {
  * the angle, we also have an unbiased angular rate available.   These are
  * read-only to the user of the module.
  */
-float			angle;
-float			q_bias;
-float			rate;
+double			angle=0.0;
+double			q_bias=0.0;
+double			rate=0.0;
 
 /*
  * R represents the measurement covariance noise.  In this case,
@@ -76,7 +76,7 @@ float			rate;
  */
 // !!! Adjusting R changes the speed at which the filter converges.
 //     It is an indication of trust in the measurement
-static const float	R_angle	= R_angle_PARAM;
+static const double	R_angle	= R_angle_PARAM;
 
 /*
  * Q is a 2x2 matrix that represents the process covariance noise.
@@ -84,8 +84,8 @@ static const float	R_angle	= R_angle_PARAM;
  * relative to the gyros.
  */
  // originally .001 and .003
-static const float	Q_angle	= Q_angle_PARAM;
-static const float	Q_gyro	= Q_gyro_PARAM;
+static const double	Q_angle	= Q_angle_PARAM;
+static const double	Q_gyro	= Q_gyro_PARAM;
 
 /*
  * state_update is called every dt with a biased gyro measurement
@@ -126,10 +126,10 @@ static const float	Q_gyro	= Q_gyro_PARAM;
  * very little CPU time.
  */
 void
-state_update(const float q_m	/* Pitch gyro measurement */)
+state_update(const double		q_m	/* Pitch gyro measurement */)
 {
 	/* Unbias our gyro */
-	const float		q = q_m - q_bias;
+	const double		q = q_m - q_bias;
 
 	/*
 	 * Compute the derivative of the covariance matrix
@@ -140,11 +140,11 @@ state_update(const float q_m	/* Pitch gyro measurement */)
 	 * by P and P multiplied by A' = [ 0 0, -1, 0 ].  This is then added
 	 * to the diagonal elements of Q, which are Q_angle and Q_gyro.
 	 */
-	const float		Pdot[2 * 2] = {
+	const double		Pdot[2 * 2] = {
 		Q_angle - P[0][1] - P[1][0],	/* 0,0 */
-		        - P[1][1],				/* 0,1 */
-		        - P[1][1],				/* 1,0 */
-		Q_gyro							/* 1,1 */
+		        - P[1][1],		/* 0,1 */
+		        - P[1][1],		/* 1,0 */
+		Q_gyro				/* 1,1 */
 	};
 
 	/* Store our unbias gyro estimate */
@@ -183,7 +183,7 @@ state_update(const float q_m	/* Pitch gyro measurement */)
  *
  * As commented in state_update, the math here is simplified to
  * make it possible to execute on a small microcontroller with no
- * floating point unit.  It will be hard to read the actual code and
+ * doubleing point unit.  It will be hard to read the actual code and
  * see what is happening, which is why there is this extensive
  * comment block.
  *
@@ -199,43 +199,40 @@ state_update(const float q_m	/* Pitch gyro measurement */)
  * bias.
  */
  
-float		angle_err;
-float		C_0;
-float 		temp1, temp2;
+double		angle_err;
+double		C_0;
+//double 		temp1, temp2;
 
 void
 kalman_update(
-	//const float		ax_m	/* X acceleration */
-	float		ax_m	/* X acceleration */
-	//const float		az_m	/* Z acceleration */
+	const double angle_m	/* tilt determined from acceleration sensor */
 )
 {
 
 	/* Compute our measured angle and the error in our estimate */
-	//const float		angle_m = atan2( -az_m, ax_m );
+	//const double		angle_m = atan2( -az_m, ax_m );
 	// !!!Changed since only 1 accel DOF
-	float angle_m;
+//	double angle_m;
 //	angle_m = scale_accel((int)ax_m); // asin( ax_m / ACCEL_SCALE );
 	///////////////////////////////////////////////////////////////////
 	
-//#define GYRO_OFFSET 613	// value at 0 degrees / sec - unimportant, as the Kalman filter corrects this/
+//#define GYRO_OFFSET 613		// value at 0 degrees / sec - unimportant, as the Kalman filter corrects this
 //#define ACCEL_OFFSET 650	// value at 0 degrees
 
-//#define GYRO_SCALE 0.8	// gyro is 2 mv/(deg/sec), ADC is 2.5mv/tick: 2/2.5 ; degrees/sec = adc * .8 
+//#define GYRO_SCALE 0.8		// gyro is 2 mv/(deg/sec), ADC is 2.5mv/tick: 2/2.5 ; degrees/sec = adc * .8 
 //#define ACCEL_SCALE 135.0	// ADC bits per 90 degrees
 
-#define RAD_TO_DEG (180 / 3.1415926535897932384626433832795)
+//#define RAD_TO_DEG (180 / 3.1415926535897932384626433832795)
 	///////////////////////////////////////////////////////////////////
-	temp1 = ax_m - ACCEL_OFFSET;
-	if (temp1 < -ACCEL_SCALE) temp1 = -ACCEL_SCALE;
-	if (temp1 > ACCEL_SCALE)  temp1 =  ACCEL_SCALE;
+//	temp1 = ax_m - ACCEL_OFFSET;
+//	if (temp1 < -ACCEL_SCALE) temp1 = -ACCEL_SCALE;
+//	if (temp1 > ACCEL_SCALE)  temp1 =  ACCEL_SCALE;
 
-	temp2 = temp1 / ACCEL_SCALE;
-	angle_m = asin(temp2);	
-	angle_m *= RAD_TO_DEG;
+//	temp2 = temp1 / ACCEL_SCALE;
+//	angle_m = asin(temp2);	
+//	angle_m *= RAD_TO_DEG;
 
 	///////////////////////////////////////////////////////////////////
-
 
 	angle_err = angle_m - angle;
 	/*
@@ -247,7 +244,7 @@ kalman_update(
 	 * we comment it out.
 	 */
 	C_0 = 1;
-	/* const float		C_1 = 0; */
+	/* const double		C_1 = 0; */
 
 	/*
 	 * PCt<2,1> = P<2,2> * C'<2,1>, which we use twice.  This makes
@@ -255,8 +252,8 @@ kalman_update(
 	 * Note that C[0,1] = C_1 is zero, so we do not compute that
 	 * term.
 	 */
-	const float		PCt_0 = C_0 * P[0][0]; /* + C_1 * P[0][1] = 0 */
-	const float		PCt_1 = C_0 * P[1][0]; /* + C_1 * P[1][1] = 0 */
+	const double		PCt_0 = C_0 * P[0][0]; /* + C_1 * P[0][1] = 0 */
+	const double		PCt_1 = C_0 * P[1][0]; /* + C_1 * P[1][1] = 0 */
 		
 	/*
 	 * Compute the error estimate.  From the Kalman filter paper:
@@ -269,7 +266,7 @@ kalman_update(
 	 *
 	 * Again, note that C_1 is zero, so we do not compute the term.
 	 */
-	const float		E = R_angle + C_0 * PCt_0
+	const double		E = R_angle + C_0 * PCt_0
 	/*	+ C_1 * PCt_1 = 0 */
 	;
 
@@ -284,8 +281,8 @@ kalman_update(
 	 *
 	 * Luckilly, E is <1,1>, so the inverse of E is just 1/E.
 	 */
-	const float		K_0 = PCt_0 / E;
-	const float		K_1 = PCt_1 / E;
+	const double		K_0 = PCt_0 / E;
+	const double		K_1 = PCt_1 / E;
 		
 	/*
 	 * Update covariance matrix.  Again, from the Kalman filter paper:
@@ -304,10 +301,10 @@ kalman_update(
 	 *
 	 *	t[0,0] = C[0,0] * P[0,0] = PCt[0,0]
 	 *
-	 * This saves us a floating point multiply.
+	 * This saves us a doubleing point multiply.
 	 */
-	const float		t_0 = PCt_0; /* C_0 * P[0][0] + C_1 * P[1][0] */
-	const float		t_1 = C_0 * P[0][1]; /* + C_1 * P[1][1]  = 0 */
+	const double		t_0 = PCt_0; /* C_0 * P[0][0] + C_1 * P[1][0] */
+	const double		t_1 = C_0 * P[0][1]; /* + C_1 * P[1][1]  = 0 */
 
 	P[0][0] -= K_0 * t_0;
 	P[0][1] -= K_0 * t_1;
@@ -331,4 +328,3 @@ kalman_update(
 	angle	+= K_0 * angle_err;
 	q_bias	+= K_1 * angle_err;
 }
-

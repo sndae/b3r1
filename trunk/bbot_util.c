@@ -176,7 +176,7 @@ void InitADC(void)
 /*********************************************************************
 *	Reads ADC channel (0-7) and returns a value (0-255)
 **********************************************************************/
-int GetADC(char ad_mux)
+int GetADC_old(char ad_mux)
 {	
 	ADMUX &= ~0x1F;				// clear channel selection (low 5 bits)
 	ADMUX |= ad_mux;			// select specified channel
@@ -191,6 +191,31 @@ int GetADC(char ad_mux)
 }
 
 
+/*********************************************************************
+*	Reads ADC channel (0-7) and returns a value (0-255)
+**********************************************************************/
+int GetADC(char ad_mux)
+{	
+	int adc_sum = 0;
+	
+	ADMUX &= ~0x1F;				// clear channel selection (low 5 bits)
+	ADMUX |= ad_mux;			// select specified channel
+
+	for(int i = 1; i <= 8; i++) { 
+		SetBit(ADCSRA, ADSC);		// ADC start conversion
+
+		/* wait for conversion to complete */
+		while (bit_is_clear(ADCSRA, ADIF))
+			;
+			
+		adc_sum += ADC;
+	}
+
+	return (adc_sum);  
+}
+
+
+/* 
 float scale_accel(int rawAccel)
 {
 	// at some point in time, switch to a more delayed conversion to float
@@ -235,7 +260,8 @@ float scale_gyro(int rawGyro)
 	return gyro;
 }
 
-
+*/
+ 
 
 /************************************************************************************
 *		Timer/Counter 0																*																			*					
@@ -417,7 +443,7 @@ void Initialization(void)
 {   
     OSCCAL_calibration();	// calibrate the OSCCAL byte
 
-    InitTimer();			// Initialize 1ms timer & PWM
+    InitTimer();			// Initialize 1ms timer
 	
     ACSR = (1<<ACD);		// ACD = analog comparator disable bit
     DIDR0 = (7<<ADC0D);	// Disable Digital input on PF0-2 (power save)

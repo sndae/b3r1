@@ -42,9 +42,9 @@
  * the angle, we also have an unbiased angular rate available.   These are
  * read-only to the user of the module.
  */
-extern float angle;
-extern float q_bias;
-extern float rate;
+extern double angle;
+extern double q_bias;
+extern double rate;
 
 
 /*
@@ -57,7 +57,7 @@ extern float rate;
  */
 extern void
 state_update(
-	const float		q_m	/* Pitch gyro measurement */
+	const double		q_m	/* Pitch gyro measurement */
 );
 
 
@@ -73,9 +73,9 @@ state_update(
  */
 extern void
 kalman_update(
-	//const float		ax_m	/* X acceleration */
-	float		ax_m	/* X acceleration */
-	//const float		az_m	/* Z acceleration */
+	//const double		ax_m	/* X acceleration */
+	double		ax_m	/* X acceleration */
+	//const double		az_m	/* Z acceleration */
 );
 
 #endif
