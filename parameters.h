@@ -8,14 +8,14 @@
 //		Parameters required for operation and tuning go here
 //
 //
-//#define 	CPUCLK_PARAM   		16000000		//	The speed of the cpu currently in use
-//												//	Also needs to be changed in FreeRTOSConfig.h
+//#define 	CPUCLK_PARAM   		8000000		//	The speed of the cpu currently in use
+//											//	Also needs to be changed in FreeRTOSConfig.h
 //
 //
 //	The FreeRTOS task stack size can be very important, especially with tasks
 //	which perform a lot of floating point operations and perhaps which 
 //	have many nested calls with FP Operations.  Size this carefully.
-//#define		stackSize_Param		128				// number of variables on stack (plus minimum)
+//#define		stackSize_Param		128		// number of variables on stack (plus minimum)
 //
 //
 //	Enable or disable I2C.  App will freeze if enabled and I2C device NOT attached
@@ -46,9 +46,9 @@
 //	should be changed and vice versa.
 //
 //	40Hz Rate for debugging because of so many rprintfs 
-#define		dt_PARAM		0.100		//	10 Hz rate
+//#define		dt_PARAM		0.100		//	10 Hz rate
 //#define		dt_PARAM		0.025		//	40 Hz rate
-//#define		dt_PARAM		0.02		//	50 Hz rate
+#define		dt_PARAM		0.02		//	50 Hz rate
 
 //	R may be used for tuning Kalman
 //	R represents the measurement covariance noise.  In this case,
