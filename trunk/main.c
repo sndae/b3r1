@@ -166,6 +166,8 @@ void balance(void)
 	double int_angle = 0.0;
 	double x = 0.0;
 	double tilt = 0.0;
+	
+	int pwm;
 
 	InitADC();
 	init_pwm();
@@ -174,7 +176,7 @@ void balance(void)
 	uartInit();
 	
 	// set the baud rate of the UART for our debug/reporting output
-	uartSetBaudRate(38400);
+	uartSetBaudRate(115200);
 
 	// initialize rprintf system
 	rprintfInit(uartSendByte);
@@ -221,13 +223,13 @@ void balance(void)
 		
 		int_angle += angle * dt_PARAM;
 
-//		rprintf("  x:");
-//		rprintfFloat(8, x);
-//		rprintf("  angle:");
-//		rprintfFloat(8, angle);
-//		rprintf("  rate:");
-//		rprintfFloat(8, rate);
-//		rprintfCRLF();
+		rprintf("  x:");
+		rprintfFloat(8, x);
+		rprintf("  angle:");
+		rprintfFloat(8, angle);
+		rprintf("  rate:");
+		rprintfFloat(8, rate);
+		//rprintfCRLF();
 
 		// Balance.  The most important line in the entire program.
 	//	balance_torque = Kp * (current_angle - neutral) + Kd * current_rate;
@@ -240,7 +242,7 @@ void balance(void)
 		// change from current angle to something proportional to speed
 		// should this be the abs val of the cur speed or just curr speed?
 		//double steer_cmd = (1.0 / (1.0 + Ksteer2 * fabs(current_angle))) * (Ksteer * steer_knob);
-		double steer_cmd = 0.0;
+		//double steer_cmd = 0.0;
 
 		// Get current rate of turn
 		//double current_turn = left_speed - right_speed; //<-- is this correct
@@ -256,8 +258,8 @@ void balance(void)
 		//turn_integrated += current_turn - steer_cmd;
 
 		//	Differential steering
-		left_motor_torque	= balance_torque + steer_cmd; //+ cur_speed + steer_cmd;
-		right_motor_torque	= balance_torque - steer_cmd; //+ cur_speed - steer_cmd;
+		//left_motor_torque	= balance_torque + steer_cmd; //+ cur_speed + steer_cmd;
+		//right_motor_torque	= balance_torque - steer_cmd; //+ cur_speed - steer_cmd;
 
 
 		// Limit extents of torque demand
@@ -269,17 +271,17 @@ void balance(void)
 //		if (right_motor_torque < -MAX_TORQUE) right_motor_torque = -MAX_TORQUE;
 //		if (right_motor_torque > MAX_TORQUE)  right_motor_torque =  MAX_TORQUE;
 
+			// const uint16_t kp = 10000; // you have to tune kp, kd and ki to achieve optimized balancing
+			// const uint16_t kd = 100;
+			// const uint16_t ki = 50000;
+			//pwm = (long long int) (floor(( kp * angle ) + ( kd * rate ) + (ki * int_angle))); /* PID - control */ 
+		pwm = (int) (angle * 10) + (rate * 10); //+ (int_angle * 20);
+
+		rprintf("  pwm:%d\r\n", pwm);
+
 		// Set PWM values for both motors
-		if (fabs(angle) < 60) 
-		{	//	if bot has not fallen over then go 
-			SetLeftMotorPWM(angle * 10);
-			SetRightMotorPWM(angle * 10);
-		} 
-		else 
-		{	// Otherwise stop motors
-			SetLeftMotorPWM(0);
-			SetRightMotorPWM(0);
-		}
+		SetLeftMotorPWM(pwm);
+		SetRightMotorPWM(pwm);
 	}
 	SetLeftMotorPWM(0);
 	SetRightMotorPWM(0);
