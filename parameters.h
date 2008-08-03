@@ -46,7 +46,7 @@
 //	should be changed and vice versa.
 //
 //	40Hz Rate for debugging because of so many rprintfs 
-//#define		dt_PARAM		0.100		//	10 Hz rate
+//define		dt_PARAM		0.100		//	10 Hz rate
 //#define		dt_PARAM		0.025		//	40 Hz rate
 #define		dt_PARAM		0.02		//	50 Hz rate
 
