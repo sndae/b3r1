@@ -1,17 +1,15 @@
 /*****************************************************************************	
-*	bbot_util.c                                                                           
-*                      
-*	Useful utilities for FlutterBot.
-*
-*	Revisions:
-*	                 
-*   Hardware:       
-*		PB5 - Right Motor PWM Control
-*		PB6 - Left Motor PWM Control
-*		PB3 - Right Motor FWD/REV Direction Control
-*		PB2 - Left Motor FWD/REV Direction Control
-*                         
-******************************************************************************/
+ *	bbot_util.c                                                                           
+ *                      
+ *	Useful utilities for FlutterBot.
+ *
+ *	Revisions:
+ *	                 
+ *   Hardware:
+ *		See Comments in main.c
+ *                         
+ ****************************************************************************
+*/
 
 #include <avr/io.h>
 #include <math.h>
@@ -211,57 +209,9 @@ int GetADC(char ad_mux)
 		adc_sum += ADC;
 	}
 
-	return (adc_sum);  
+	return (adc_sum / 8);  
 }
 
-
-/* 
-float scale_accel(int rawAccel)
-{
-	// at some point in time, switch to a more delayed conversion to float
-	// no float needed until later, unless averaging!
-
-	//	float accel	= (float) rawAccel - ACCEL_OFFSET;
-	// limit to prevent noise from causing a call to asin outside [-1,1]
-	//	accel = flim(accel, -ACCEL_SCALE, ACCEL_SCALE);
-	//return 0;
-
-  	float accel;
-	float temp;
-	temp = (float) rawAccel - ACCEL_OFFSET;
-	//accel = flim(temp, -ACCEL_SCALE, ACCEL_SCALE);
-	accel = temp;
-	if (accel < -ACCEL_SCALE) accel = -ACCEL_SCALE;
-	if (accel > ACCEL_SCALE)  accel =  ACCEL_SCALE;
-
-
-	// convert accel into an angle, using asin (ACCEL_SCALE = 1 g)
-	// returned result will be in range [-pi/2,pi/2], radians
-	//	float temp = accel / ACCEL_SCALE;
-
-	temp = accel / ACCEL_SCALE;
-	
-	accel = asin(temp);	
-	
-	//accel = asin(accel / ACCEL_SCALE);
-	// finally, convert to human-readable form : degrees
-	accel *= RAD_TO_DEG;
-	return accel;
-}
-
-
-//--------------------------------------------------------------------------------------------------------------------
-float scale_gyro(int rawGyro)
-{
-	float gyro = (float) rawGyro - GYRO_OFFSET;
-	
-	//gyro *= (100.0);
-	gyro *= GYRO_SCALE;
-	return gyro;
-}
-
-*/
- 
 
 /************************************************************************************
 *		Timer/Counter 0																*																			*					
@@ -324,7 +274,7 @@ ISR(TIMER0_COMP_vect)
 {
 	++s_msTimer;
 	/* toggle Pin B0 for Oscilloscope Timings */
-//	(PINB & 0x01) ? ClearBit(PORTB, PB0): SetBit(PORTB, PB0);
+//	(PINB & 0x01) ? ClearBit(PORTB, PB0): SetBit(PORTB, PB0);	// used to check mstimer on O'scope
 }
 
 
@@ -441,7 +391,7 @@ void Delay(unsigned int millisec)
 
 void Initialization(void)
 {   
-    OSCCAL_calibration();	// calibrate the OSCCAL byte
+    OSCCAL_calibration();	// Calibrate the OSCCAL byte and set clock to 8MHz
 
     InitTimer();			// Initialize 1ms timer
 	

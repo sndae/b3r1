@@ -144,7 +144,7 @@ state_update(const double		q_m	/* Pitch gyro measurement */)
 		Q_angle - P[0][1] - P[1][0],	/* 0,0 */
 		        - P[1][1],		/* 0,1 */
 		        - P[1][1],		/* 1,0 */
-		Q_gyro				/* 1,1 */
+		Q_gyro					/* 1,1 */
 	};
 
 	/* Store our unbias gyro estimate */
@@ -183,7 +183,7 @@ state_update(const double		q_m	/* Pitch gyro measurement */)
  *
  * As commented in state_update, the math here is simplified to
  * make it possible to execute on a small microcontroller with no
- * doubleing point unit.  It will be hard to read the actual code and
+ * floating point unit.  It will be hard to read the actual code and
  * see what is happening, which is why there is this extensive
  * comment block.
  *
@@ -301,7 +301,7 @@ kalman_update(
 	 *
 	 *	t[0,0] = C[0,0] * P[0,0] = PCt[0,0]
 	 *
-	 * This saves us a doubleing point multiply.
+	 * This saves us a floating point multiply.
 	 */
 	const double		t_0 = PCt_0; /* C_0 * P[0][0] + C_1 * P[1][0] */
 	const double		t_1 = C_0 * P[0][1]; /* + C_1 * P[1][1]  = 0 */

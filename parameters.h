@@ -47,7 +47,7 @@
 //
 //	40Hz Rate for debugging because of so many rprintfs 
 //define		dt_PARAM		0.100		//	10 Hz rate
-//#define		dt_PARAM		0.025		//	40 Hz rate
+//#define		dt_PARAM		0.01		//	100 Hz rate
 #define		dt_PARAM		0.02		//	50 Hz rate
 
 //	R may be used for tuning Kalman
@@ -100,8 +100,8 @@
 
 
 //	Motor Bias - left and right
-#define		lmb_PARAM 			128			//	PWM required to get the motor turning
-#define 	rmb_PARAM 			128			//	removes deadband at low power
+#define		lmb_PARAM 			60		//	PWM required to get the motor turning
+#define 	rmb_PARAM 			60			//	removes deadband at low power
 
 
 // 	PID adjustable gains
