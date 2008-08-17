@@ -24,7 +24,7 @@
 // Motor control circuit is connected to PortB  
 //							+---+---+---+---+---+
 //            Port B		| 1 | 3 | 5 | 7 | V |  
-//     Motor Contorl pins	+---+---+---+---+---+
+//     Motor Control pins	+---+---+---+---+---+
 //							| 0 | 2 | 4 | 6 | G |  
 //							+---+---+---+---+---+
 //
@@ -47,18 +47,30 @@
 #define gyro_sensor		4
 #define accel_sensor	5
 
+// ADC (Built in 10 bit 0-5V) Information.
+// Each ADC unit equals: 5.0V / 1024 = 0.004882812 V = 4.8828125 mV
+//
+// Rate Gyro (ADXRS401) Information:
+// Rate Gyro measures rate at 15 mV/degree/second
+// Each ADC Gyro unit equals: 4.8828125 / 15.0 = 0.325520833 degrees/sec
+//
+// Acceleromter (ADXL203) Information:
+// Accelerometer measures acceleration at 1000 mV/g
+// Each ADC unit equals: 4.8828125 / 1000mv/G = 0.0048828125 g
+
+
 // Balance
 double balance_torque;
 double overspeed;
 double overspeed_integral;
 double gyro_integrated;
 
-//	Proportional Konstant
-double Kp = Kp_PARAM;				// balance loop P gain
-//	Differentiate konstant
-double Kd = Kd_PARAM;				// balance loop D gain
+//	PID Konstants
+double Kp = 100;				// balance loop P gain
+double Ki = 50;					// balance loop I gain
+double Kd = 1;					// balance loop D gain
 
-//double Ksteer;						// steering control gain
+//double Ksteer;					// steering control gain
 //double Ksteer2;					// steering control tilt sensitivity
 //double Kspeed; 					// speed tracking gain
 double neutral = neutral_PARAM;		// "angle of natural balance"
@@ -152,6 +164,7 @@ void showADC(void)
 	LCD_ShowColons(0);
 }
 
+
 /*****************************************************************************
  *	Balance - 
  *****************************************************************************/  
@@ -160,8 +173,7 @@ void balance(void)
 	unsigned long TimerMsWork;
 
 	long int g_bias = 0;
-//	const int x_offset = 3805;	//offset value 2.35 * 8192 / 5.0V = 3850
-	const int x_offset = 4254;	//offset value 2.56V * 8192 / 4.93V = 4254
+	double x_offset = 532;		//offset value 2.56V * 1024 / 4.93V = 4254
 	double q_m = 0.0;
 	double int_angle = 0.0;
 	double x = 0.0;
@@ -189,7 +201,7 @@ void balance(void)
 
 	TimerMsWork = TimerMsCur();
 	
-	DDRB |= (1 << PB0);	// Make B0 an output
+	DDRB |= (1 << PB0);	// Make B0 an output for LED
 	
 
 	/* as a 1st step, a reference measurement of the angular rate sensor is 
@@ -213,11 +225,20 @@ void balance(void)
 		// toggle pin B0 for oscilloscope timings.
 		PORTB = PINB ^ (1 << PB0);
 		
-		
-		q_m = (GetADC(gyro_sensor) - g_bias) / 24.578;		// (0.015 * 8192)/5V = 24.578
+		// get rate gyro reading and convert to deg/sec
+//		q_m = (GetADC(gyro_sensor) - g_bias) / -3.072;	// -3.07bits/deg/sec (neg. because forward is CCW)
+		q_m = (GetADC(gyro_sensor) - g_bias) * -0.3255;	// each bit = 0.3255 /deg/sec (neg. because forward is CCW)
 		state_update(q_m);
 		
-		x = (GetADC(accel_sensor) - x_offset) / 1570.2;	// 8192 * (3.37V - 1.48V)/4.93V/2G
+
+		// get Accelerometer reading and convert to units of gravity.  
+//		x = (GetADC(accel_sensor) - x_offset) / 204.9;	// (205 bits/G)
+		x = (GetADC(accel_sensor) - x_offset) * 0.00488;	// each bit = 0.00488/G
+
+		// x is measured in multiples of earth gravitation g
+		// therefore x = sin (tilt) or tilt = arcsin(x)
+		// for small angles in rad (not deg): arcsin(x)=x 
+		// Calculation of deg from rad: 1 deg = 180/pi = 57.29577951
 		tilt = 57.29577951 * (x);
 		kalman_update(tilt);
 		
@@ -229,7 +250,6 @@ void balance(void)
 		rprintfFloat(8, angle);
 		rprintf("  rate:");
 		rprintfFloat(8, rate);
-		//rprintfCRLF();
 
 		// Balance.  The most important line in the entire program.
 	//	balance_torque = Kp * (current_angle - neutral) + Kd * current_rate;
@@ -271,11 +291,7 @@ void balance(void)
 //		if (right_motor_torque < -MAX_TORQUE) right_motor_torque = -MAX_TORQUE;
 //		if (right_motor_torque > MAX_TORQUE)  right_motor_torque =  MAX_TORQUE;
 
-			// const uint16_t kp = 10000; // you have to tune kp, kd and ki to achieve optimized balancing
-			// const uint16_t kd = 100;
-			// const uint16_t ki = 50000;
-			//pwm = (long long int) (floor(( kp * angle ) + ( kd * rate ) + (ki * int_angle))); /* PID - control */ 
-		pwm = (int) (angle * 10) + (rate * 10); //+ (int_angle * 20);
+		pwm = (int) ((angle -3.5) * Kp) + (rate * Kd); // + (int_angle * Ki);
 
 		rprintf("  pwm:%d\r\n", pwm);
 
@@ -431,18 +447,16 @@ void PWM_Test(void)
 	        show12bits(i, i);
 			SetLeftMotorPWM(i);
 			SetRightMotorPWM(i);
-			TimerWait(100);
+			TimerWait(500);
 		}
 		for (int i = 0; i <= 255 - lmb_PARAM; i++) {
 	        show12bits(i, i);
 			SetLeftMotorPWM(-i);
 			SetRightMotorPWM(-i);
-			TimerWait(100);
+			TimerWait(500);
 		}
 			
 /*
-			
-	
  	    printLCD("LFWD");
 	    SetLeftMotorPWM(255);
         SetRightMotorPWM(0);
